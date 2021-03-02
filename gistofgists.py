@@ -1,62 +1,69 @@
-'''
-description:
-    creates a gist of github gists in markdown table format
-running:
-    pip3 install -r requirements.txt
-    python3 gistofgists.py -u neelabalan
-'''
-
 import requests
+from   pytablewriter import MarkdownTableWriter
+
+import sys
+import math
 import json
-import argparse
+from functools import partial
 
-try:
-    from pytablewriter import MarkdownTableWriter
-except ImportError as error:
-    print("module not found - {}".format(error))
+def get_url(key, user=None, page=1, total=None):
+    urls = {
+        'API': 'https://api.github.com/users/{}'.format(user),
+        'GIST_API': 'https://api.github.com/users/{}/gists?per_page=100&page={}'.format(user, page),
+        'USER_GIST': 'https://gist.github.com/{}'.format(user),
+        'TOTAL_BADGE': '![Total](https://img.shields.io/badge/Total-{}-green.svg)'.format(total),
+        'BUILD_BADGE': '![update README](https://github.com/{}/mygists/actions/workflows/update_readme.yml/badge.svg?branch=main)'.format(user),
+    }
+    return urls.get(key)
 
-def validUser(response):
-    ''' check if the user exists in github '''
-    if response.status_code != 200 and response.json().get('message') == 'Not Found':
-        return False 
-    else:
-        return True
+def fetch_responses(total_gist, user_urls):
+    responses    = list()
+    if total_gist > 0:
+        number_of_pages = math.ceil( total_gist / 100 )
+        for counter in range( number_of_pages ):
+            responses +=  requests.get( 
+                user_urls('GIST_API', total=counter+1)
+            ).json()
 
+    return responses
+ 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '-u',
-        '--user',
-        help = 'provide unique github user as arguement'
-    )
-    args = parser.parse_args()
-    if args.user:
-        user     = args.user
-        url      = 'https://api.github.com/users/{}/gists'.format(user)
-        response = requests.get(url)
-        if validUser(response):
-            md                = list() 
-            userGistUrl       = 'gist.github.com/{}'.format(user)
-            writer            = MarkdownTableWriter()
-            gists             = response.json()
-            writer.table_name = '[Gist of Gists]({})'.format(userGistUrl)
-            writer.headers    = [
-                'description', 
-                'files',
-            ]
 
-            for gist in gists:
-                files       = ['`{}`'.format(file) for file in gist.get('files').keys()]
-                filestr     = '<br>'.join(files) if len(files) > 1 else ''.join(files)
-                description = gist.get('description')
-                gistUrl     = gist.get('url')
-                md.append(['[{}]({})'.format(description, gistUrl), filestr])
+    user = sys.argv[1] if len(sys.argv) > 0 else None
+    if not user:
+        sys.exit('no user provided')
 
-            writer.value_matrix = md
-            with open('README.md', 'w+') as file:
-                file.write(writer.dumps()) 
+    response = requests.get(get_url(key='API', user=user)) 
+    if response.status_code == 200:
+        user_urls         = partial(get_url, user=user)
+        md                = list() 
+        writer            = MarkdownTableWriter()
+        total_gist        = response.json().get('public_gists')
+        writer.table_name = '''[My Github Gists]({})<br>{}{}'''.format(
+            user_urls(key='USER_GIST'), 
+            user_urls(key='TOTAL_BADGE', total=total_gist), 
+            user_urls(key='BUILD_BADGE')
+        )
+        writer.headers    = [
+            'description', 
+            'files',
+        ]
+        gists = fetch_responses(total_gist, user_urls)
 
-        else:
-            print('user does not exist')
+        for gist in gists:
+            files       = ['`{}`'.format(file) for file in gist.get('files').keys()]
+            filestr     = '<br>'.join(files) if len(files) > 1 else ''.join(files)
+            description = gist.get('description')
+            gist_url = gist.get('html_url')
+            md.append(['[{}]({})'.format(description, gist_url), filestr]) \
+                if description \
+                else md.append(['[url]({})'.format(gist_url), filestr])
+
+        writer.value_matrix = md
+        # uncomment for testing
+        # with open('TEST.md', 'w+') as file:
+        with open('README.md', 'w+') as file:
+            file.write(writer.dumps()) 
     else:
-        print('no user provided')
+        sys.exit('user does not exist')
+
