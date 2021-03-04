@@ -12,7 +12,7 @@ def get_url(key, user=None, page=1, total=None):
         'GIST_API': 'https://api.github.com/users/{}/gists?per_page=100&page={}'.format(user, page),
         'USER_GIST': 'https://gist.github.com/{}'.format(user),
         'TOTAL_BADGE': '![Total](https://img.shields.io/badge/Total-{}-green.svg)'.format(total),
-        'BUILD_BADGE': '![update README](https://github.com/{}/mygists/actions/workflows/update_readme.yml/badge.svg?branch=main)'.format(user),
+        'BUILD_BADGE': '![update README](https://github.com/{}/mygists/actions/workflows/update_readme.yml/badge.svg)'.format(user),
     }
     return urls.get(key)
 
