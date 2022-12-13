@@ -20,17 +20,11 @@ def get_url(
         - BUILD_BADGE   badge display to github action build status
     """
     urls = {
-        "API": "https://api.github.com/users/{}".format(user),
-        "GIST_API": "https://api.github.com/users/{}/gists?per_page=100&page={}".format(
-            user, page
-        ),
-        "USER_GIST": "https://gist.github.com/{}".format(user),
-        "TOTAL_BADGE": "![Total](https://img.shields.io/badge/Total-{}-blue.svg)".format(
-            total
-        ),
-        "BUILD_BADGE": "![update README](https://github.com/{}/mygists/actions/workflows/update_readme.yml/badge.svg)".format(
-            user
-        ),
+        "API": f"https://api.github.com/users/{user}",
+        "GIST_API": f"https://api.github.com/users/{user}/gists?per_page=100&page={page}",
+        "USER_GIST": f"https://gist.github.com/{user}",
+        "TOTAL_BADGE": f"![Total](https://img.shields.io/badge/Total-{total}-blue.svg)",
+        "BUILD_BADGE": f"![update README](https://github.com/{user}/mygists/actions/workflows/update_readme.yml/badge.svg)"
     }
     return urls.get(key)
 
@@ -114,8 +108,8 @@ def construct_table(
 
         # put them all together
         md.append(
-            ["[{}]({})".format(description, gist_url), filestr]
-        ) if description else md.append(["[url]({})".format(gist_url), filestr])
+            [f"[{description}]({gist_url})", filestr]
+        ) if description else md.append([f"[url]({gist_url})", filestr])
 
     writer.value_matrix = md
     return writer
